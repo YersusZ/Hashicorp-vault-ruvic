@@ -1,0 +1,127 @@
+:root {
+  --ruvic-bg: #0f1419;
+  --ruvic-surface: #1a222c;
+  --ruvic-text: #e8eef4;
+  --ruvic-muted: #9aa8b6;
+  --ruvic-accent: #3dd6c6;
+  --ruvic-warning: #f0b429;
+  --ruvic-border: #2a3644;
+  --ruvic-code: #11181f;
+  --ruvic-link: #7ee0d4;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ruvic-bg);
+  color: var(--ruvic-text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  line-height: 1.55;
+}
+
+.ruvic-container {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 2rem;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+.ruvic-toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  background: var(--ruvic-surface);
+  border: 1px solid var(--ruvic-border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+}
+
+.ruvic-toc-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.ruvic-toc ol {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.ruvic-toc a {
+  color: var(--ruvic-link);
+  text-decoration: none;
+}
+
+.ruvic-toc a:hover { text-decoration: underline; }
+
+h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+h2 { margin-top: 2rem; }
+h3 { margin-top: 1.4rem; }
+
+.guide-updated {
+  color: var(--ruvic-muted);
+  margin-top: 0;
+}
+
+.ruvic-steps { padding-left: 1.2rem; }
+.ruvic-steps li { margin-bottom: 0.75rem; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+th, td {
+  border: 1px solid var(--ruvic-border);
+  padding: 0.6rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th { background: var(--ruvic-surface); }
+
+code, pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+}
+
+pre {
+  background: var(--ruvic-code);
+  border: 1px solid var(--ruvic-border);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+}
+
+.callout {
+  border-left: 4px solid var(--ruvic-accent);
+  background: var(--ruvic-surface);
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.callout-warning { border-left-color: var(--ruvic-warning); }
+
+.screenshot-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  border: 1px dashed var(--ruvic-border);
+  border-radius: 8px;
+  color: var(--ruvic-muted);
+  background: var(--ruvic-surface);
+}
+
+@media (max-width: 860px) {
+  .ruvic-container {
+    grid-template-columns: 1fr;
+  }
+  .ruvic-toc { position: static; }
+}

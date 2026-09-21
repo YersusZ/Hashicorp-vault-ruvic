@@ -1,0 +1,28 @@
+{
+  "id": "hashicorp-vault",
+  "name": "HashiCorp Vault",
+  "name_en": "HashiCorp Vault",
+  "description": "Gestión del ciclo de vida de credenciales de infraestructura en HashiCorp Vault: secretos KV, credenciales dinámicas (AWS, Azure, GCP, base de datos, SSH), rotación y leases.",
+  "description_en": "Infrastructure credential lifecycle in HashiCorp Vault: KV secrets, dynamic credentials (AWS, Azure, GCP, database, SSH), rotation, and leases.",
+  "category": "seguridad",
+  "category_en": "security",
+  "keywords": [
+    "vault",
+    "hashicorp",
+    "secrets",
+    "credenciales",
+    "credentials",
+    "kv",
+    "approle",
+    "aws",
+    "azure",
+    "gcp",
+    "ssh",
+    "database",
+    "leases",
+    "rotacion",
+    "rotation",
+    "infraestructura",
+    "infrastructure"
+  ]
+}

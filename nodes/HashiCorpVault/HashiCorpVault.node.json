@@ -1,0 +1,18 @@
+{
+  "node": "n8n-nodes-hashicorp-vault-ruvic.hashicorpVault",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["Development", "Utility"],
+  "resources": {
+    "credentialDocumentation": [
+      {
+        "url": "https://developer.hashicorp.com/vault/docs/auth/approle"
+      }
+    ],
+    "primaryDocumentation": [
+      {
+        "url": "https://developer.hashicorp.com/vault/api-docs"
+      }
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HashiCorp Vault">
+  <rect width="64" height="64" rx="12" fill="#000000"/>
+  <path fill="#FFCF25" d="M32 10l18 10v16L32 54 14 36V20L32 10zm0 8.4L20 25v10.2L32 45.4l12-10.2V25L32 18.4z"/>
+  <path fill="#FFCF25" d="M32 26l6 3.4v7.2L32 40l-6-3.4v-7.2L32 26z"/>
+</svg>

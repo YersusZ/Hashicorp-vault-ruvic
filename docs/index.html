@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="doc_title">Conector HashiCorp Vault — Ruvic</title>
+  <link rel="stylesheet" href="assets/ruvic.css">
+</head>
+<body>
+  <main class="ruvic-container">
+    <nav class="ruvic-toc" aria-label="Índice">
+      <p class="ruvic-toc-title" data-i18n="toc_title">Contenido</p>
+      <ol>
+        <li><a href="#que-es" data-i18n="toc.que_es">¿Qué es y para qué sirve?</a></li>
+        <li><a href="#prerrequisitos" data-i18n="toc.prerrequisitos">Prerrequisitos</a></li>
+        <li><a href="#configuracion-fabricante" data-i18n="toc.configuracion_fabricante">Configuración en el fabricante</a></li>
+        <li><a href="#permisos" data-i18n="toc.permisos">Permisos requeridos</a></li>
+        <li><a href="#configuracion-ruvic" data-i18n="toc.configuracion_ruvic">Configuración en Ruvic</a></li>
+        <li><a href="#verificacion" data-i18n="toc.verificacion">Verificación</a></li>
+        <li><a href="#solucion-problemas" data-i18n="toc.solucion_problemas">Solución de problemas</a></li>
+        <li><a href="#faq-seguridad" data-i18n="toc.faq_seguridad">Preguntas frecuentes y notas de seguridad</a></li>
+      </ol>
+    </nav>
+
+    <article>
+      <h1 data-i18n="guide_title">HashiCorp Vault</h1>
+      <p class="guide-updated">{{ULTIMA_ACTUALIZACION}}</p>
+
+      <section>
+        <h2 id="que-es" data-i18n="section.que_es">¿Qué es y para qué sirve?</h2>
+        <p data-i18n="section.que_es.body">Este conector permite a flujos y agentes de Ruvic gestionar el ciclo de vida de credenciales de infraestructura en HashiCorp Vault, sin guardar secretos en el workflow: lectura y escritura KV, emisión de credenciales dinámicas (AWS, Azure, GCP, base de datos y SSH), rotación y revocación de leases.</p>
+        <p data-i18n="section.que_es.body2">No configura mounts ni políticas de Vault. Usa un motor y una política que ya existen, con AppRole (recomendado) o token.</p>
+      </section>
+
+      <section>
+        <h2 id="prerrequisitos" data-i18n="section.prerrequisitos">Prerrequisitos</h2>
+        <ul>
+          <li data-i18n="prereq.1">Cluster Vault accesible desde Ruvic por HTTPS (TLS válido).</li>
+          <li data-i18n="prereq.2">KV v1 o v2 montado (por defecto <code>secret</code>).</li>
+          <li data-i18n="prereq.3">Motores dinámicos montados solo si vas a usarlos: <code>aws</code>, <code>azure</code>, <code>gcp</code>, <code>database</code>, <code>ssh</code>.</li>
+          <li data-i18n="prereq.4">Método de autenticación AppRole habilitado, o un token no-root con TTL y políticas mínimas.</li>
+          <li data-i18n="prereq.5">Namespace de Vault Enterprise, si aplica.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 id="configuracion-fabricante" data-i18n="section.configuracion_fabricante">Configuración en el fabricante</h2>
+        <ol class="ruvic-steps">
+          <li><strong data-i18n="step.1.label">Crear una política mínima:</strong> <span data-i18n="step.1.body">Define capabilities solo sobre los paths que Ruvic debe usar. Ejemplo KV v2 + leases:</span></li>
+        </ol>
+        <pre><code>path "secret/data/infra/*" {
+  capabilities = ["create", "read", "update", "patch", "delete"]
+}
+path "secret/metadata/infra/*" {
+  capabilities = ["read", "list", "update", "delete"]
+}
+path "secret/delete/infra/*" {
+  capabilities = ["update"]
+}
+path "secret/undelete/infra/*" {
+  capabilities = ["update"]
+}
+path "sys/leases/lookup" {
+  capabilities = ["update"]
+}
+path "sys/leases/renew" {
+  capabilities = ["update"]
+}
+path "sys/leases/revoke" {
+  capabilities = ["update"]
+}</code></pre>
+        <ol class="ruvic-steps" start="2">
+          <li><strong data-i18n="step.2.label">Habilitar AppRole:</strong> <span data-i18n="step.2.body">Monta <code>approle</code>, crea un rol ligado a la política y genera Role ID + Secret ID. No uses el token root en Ruvic.</span></li>
+          <li><strong data-i18n="step.3.label">Preparar motores dinámicos:</strong> <span data-i18n="step.3.body">Configura roles de AWS/Azure/GCP/database/SSH en Vault (no en Ruvic). El conector solo llama a <code>creds</code>, <code>sts</code>, <code>sign</code>, <code>rotate-role</code> y <code>rotate-root</code>.</span></li>
+          <li><strong data-i18n="step.4.label">Comprobar conectividad:</strong> <span data-i18n="step.4.body">Desde un entorno de confianza, verifica <code>/v1/sys/health</code> y un login AppRole antes de guardar la credencial en Ruvic.</span></li>
+        </ol>
+        <p><img src="assets/img/vault-approle.svg" alt="Captura: política y AppRole en la UI de Vault" data-i18n-alt="img.vault_policy.alt"></p>
+      </section>
+
+      <section>
+        <h2 id="permisos" data-i18n="section.permisos">Permisos requeridos</h2>
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="table.permiso">Permiso (path Vault)</th>
+              <th data-i18n="table.para_que">Para qué sirve</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>auth/approle/login</code></td>
+              <td data-i18n="perm.approle">Autenticación de máquina. El conector no persiste el client token.</td>
+            </tr>
+            <tr>
+              <td><code>secret/data/*</code> y <code>secret/metadata/*</code></td>
+              <td data-i18n="perm.kv">CRUD y listado de secretos estáticos de infraestructura (KV v2).</td>
+            </tr>
+            <tr>
+              <td><code>database/creds/&lt;rol&gt;</code>, <code>rotate-role/*</code>, <code>rotate-root/*</code></td>
+              <td data-i18n="perm.db">Emitir y rotar credenciales de base de datos.</td>
+            </tr>
+            <tr>
+              <td><code>ssh/creds/*</code>, <code>ssh/sign/*</code>, <code>ssh/issue/*</code></td>
+              <td data-i18n="perm.ssh">OTP, firma de certificados y emisión de claves SSH.</td>
+            </tr>
+            <tr>
+              <td><code>aws/creds/*</code>, <code>aws/sts/*</code>, <code>aws/config/rotate-root</code></td>
+              <td data-i18n="perm.aws">Credenciales IAM/STS de corta duración y rotación de root AWS.</td>
+            </tr>
+            <tr>
+              <td><code>azure/creds/*</code>, <code>azure/rotate-root</code></td>
+              <td data-i18n="perm.azure">Service principals de Azure y rotación de root.</td>
+            </tr>
+            <tr>
+              <td><code>gcp/roleset/*/token</code>, <code>gcp/config/rotate-root</code></td>
+              <td data-i18n="perm.gcp">Tokens o keys de GCP y rotación de root.</td>
+            </tr>
+            <tr>
+              <td><code>sys/leases/lookup</code>, <code>renew</code>, <code>revoke</code></td>
+              <td data-i18n="perm.lease">Consultar, renovar y revocar leases. No se exponen revoke-prefix ni revoke-force.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="configuracion-ruvic" data-i18n="section.configuracion_ruvic">Configuración en Ruvic</h2>
+        <ol class="ruvic-steps">
+          <li><strong data-i18n="ruvic.1.label">Crear credencial:</strong> <span data-i18n="ruvic.1.body">HashiCorp Vault API. URL del cluster, AppRole (Role ID + Secret ID) o token, namespace opcional, mounts KV/AWS/Azure/GCP/database/SSH.</span></li>
+          <li><strong data-i18n="ruvic.2.label">Probar conexión:</strong> <span data-i18n="ruvic.2.body">Ruvic hace login y <code>auth/token/lookup-self</code>. El token no se muestra en la UI.</span></li>
+          <li><strong data-i18n="ruvic.3.label">Añadir el nodo:</strong> <span data-i18n="ruvic.3.body">Elige recurso (KV, Lease, Database, SSH, AWS, Azure, GCP, System) y operación. Activa «Mask secret values» salvo que el siguiente paso necesite el secreto en claro.</span></li>
+          <li><strong data-i18n="ruvic.4.label">Rotación KV:</strong> <span data-i18n="ruvic.4.body">KV no rota solo. La operación Rotate escribe una versión nueva (CAS opcional). Para secretos dinámicos usa Rotate Role / Rotate Root del motor.</span></li>
+        </ol>
+        <div class="callout callout-info">
+          <p data-i18n="ruvic.callout">TLS permanece activo. «Ignore SSL issues» solo para laboratorios aislados.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="verificacion" data-i18n="section.verificacion">Verificación</h2>
+        <ol class="ruvic-steps">
+          <li data-i18n="verify.1">Test connection de la credencial en verde.</li>
+          <li data-i18n="verify.2">System → Health responde; Lookup Self no incluye el id del token.</li>
+          <li data-i18n="verify.3">KV Read de un path de prueba y List del prefijo.</li>
+          <li data-i18n="verify.4">Si hay motor dinámico: Generate credentials, anota <code>lease_id</code>, Lease → Revoke y confirma que ya no autentica.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2 id="solucion-problemas" data-i18n="section.solucion_problemas">Solución de problemas</h2>
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="table.sintoma">Síntoma</th>
+              <th data-i18n="table.causa">Causa probable</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-i18n="trouble.403">403 / permission denied</td>
+              <td data-i18n="trouble.403.body">La política no cubre el path (en KV v2 el listado va por <code>metadata/</code>, no por <code>data/</code>).</td>
+            </tr>
+            <tr>
+              <td data-i18n="trouble.404">404 en KV</td>
+              <td data-i18n="trouble.404.body">Mount o versión KV incorrectos (v1 vs v2), o el path no existe.</td>
+            </tr>
+            <tr>
+              <td data-i18n="trouble.approle">Fallo de AppRole</td>
+              <td data-i18n="trouble.approle.body">Role ID/Secret ID inválidos, mount distinto de <code>approle</code>, o Secret ID de un solo uso ya consumido.</td>
+            </tr>
+            <tr>
+              <td data-i18n="trouble.tls">Error TLS</td>
+              <td data-i18n="trouble.tls.body">Certificado no confiable. Corrige la CA; no desactives TLS en producción.</td>
+            </tr>
+            <tr>
+              <td data-i18n="trouble.lease">Revoke no invalida</td>
+              <td data-i18n="trouble.lease.body">El secreto era KV (sin lease) o el rol no es renewable. Revoke solo aplica a credenciales dinámicas.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 id="faq-seguridad" data-i18n="section.faq_seguridad">Preguntas frecuentes y notas de seguridad</h2>
+        <h3 data-i18n="faq.1.q">¿Ruvic almacena los secretos que lee de Vault?</h3>
+        <p data-i18n="faq.1.a">No. El conector autentica, llama a la API y devuelve el JSON al paso del flujo. Activa el enmascarado para que passwords y tokens no queden visibles en la ejecución.</p>
+        <h3 data-i18n="faq.2.q">¿Por qué no hay revoke-force?</h3>
+        <p data-i18n="faq.2.a">Es una operación sudo peligrosa. El conector solo ofrece lookup, renew y revoke sincrónico de un lease concreto.</p>
+        <h3 data-i18n="faq.3.q">¿Cómo se rotan secretos KV?</h3>
+        <p data-i18n="faq.3.a">Escribiendo una versión nueva (operación Rotate/Write). Vault no rota KV por sí mismo. Los motores dinámicos sí tienen rotate-root y rotate-role.</p>
+        <h3 data-i18n="faq.4.q">¿Puedo usar un token root?</h3>
+        <p data-i18n="faq.4.a">No se recomienda. Usa AppRole con Secret ID wrapping o periódico y una política de mínimo privilegio.</p>
+        <div class="callout callout-warning">
+          <p data-i18n="faq.warning">Nunca pidas a un agente «devuélveme todas las credenciales». Limita paths y desactiva operaciones de escritura/rotación si el bot solo debe leer.</p>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <script>
+    const I18N = {
+      es: {
+        doc_title: "Conector HashiCorp Vault — Ruvic",
+        toc_title: "Contenido",
+        "toc.que_es": "¿Qué es y para qué sirve?",
+        "toc.prerrequisitos": "Prerrequisitos",
+        "toc.configuracion_fabricante": "Configuración en el fabricante",
+        "toc.permisos": "Permisos requeridos",
+        "toc.configuracion_ruvic": "Configuración en Ruvic",
+        "toc.verificacion": "Verificación",
+        "toc.solucion_problemas": "Solución de problemas",
+        "toc.faq_seguridad": "Preguntas frecuentes y notas de seguridad",
+        guide_title: "HashiCorp Vault",
+        "section.que_es": "¿Qué es y para qué sirve?",
+        "section.que_es.body": "Este conector permite a flujos y agentes de Ruvic gestionar el ciclo de vida de credenciales de infraestructura en HashiCorp Vault, sin guardar secretos en el workflow: lectura y escritura KV, emisión de credenciales dinámicas (AWS, Azure, GCP, base de datos y SSH), rotación y revocación de leases.",
+        "section.que_es.body2": "No configura mounts ni políticas de Vault. Usa un motor y una política que ya existen, con AppRole (recomendado) o token.",
+        "section.prerrequisitos": "Prerrequisitos",
+        "prereq.1": "Cluster Vault accesible desde Ruvic por HTTPS (TLS válido).",
+        "prereq.2": "KV v1 o v2 montado (por defecto secret).",
+        "prereq.3": "Motores dinámicos montados solo si vas a usarlos: aws, azure, gcp, database, ssh.",
+        "prereq.4": "Método de autenticación AppRole habilitado, o un token no-root con TTL y políticas mínimas.",
+        "prereq.5": "Namespace de Vault Enterprise, si aplica.",
+        "section.configuracion_fabricante": "Configuración en el fabricante",
+        "step.1.label": "Crear una política mínima:",
+        "step.1.body": "Define capabilities solo sobre los paths que Ruvic debe usar. Ejemplo KV v2 + leases:",
+        "step.2.label": "Habilitar AppRole:",
+        "step.2.body": "Monta approle, crea un rol ligado a la política y genera Role ID + Secret ID. No uses el token root en Ruvic.",
+        "step.3.label": "Preparar motores dinámicos:",
+        "step.3.body": "Configura roles de AWS/Azure/GCP/database/SSH en Vault (no en Ruvic). El conector solo llama a creds, sts, sign, rotate-role y rotate-root.",
+        "step.4.label": "Comprobar conectividad:",
+        "step.4.body": "Desde un entorno de confianza, verifica /v1/sys/health y un login AppRole antes de guardar la credencial en Ruvic.",
+        "img.vault_policy.alt": "Captura: política y AppRole en la UI de Vault (añadir cuando esté disponible)",
+        "section.permisos": "Permisos requeridos",
+        "table.permiso": "Permiso (path Vault)",
+        "table.para_que": "Para qué sirve",
+        "perm.approle": "Autenticación de máquina. El conector no persiste el client token.",
+        "perm.kv": "CRUD y listado de secretos estáticos de infraestructura (KV v2).",
+        "perm.db": "Emitir y rotar credenciales de base de datos.",
+        "perm.ssh": "OTP, firma de certificados y emisión de claves SSH.",
+        "perm.aws": "Credenciales IAM/STS de corta duración y rotación de root AWS.",
+        "perm.azure": "Service principals de Azure y rotación de root.",
+        "perm.gcp": "Tokens o keys de GCP y rotación de root.",
+        "perm.lease": "Consultar, renovar y revocar leases. No se exponen revoke-prefix ni revoke-force.",
+        "section.configuracion_ruvic": "Configuración en Ruvic",
+        "ruvic.1.label": "Crear credencial:",
+        "ruvic.1.body": "HashiCorp Vault API. URL del cluster, AppRole (Role ID + Secret ID) o token, namespace opcional, mounts KV/AWS/Azure/GCP/database/SSH.",
+        "ruvic.2.label": "Probar conexión:",
+        "ruvic.2.body": "Ruvic hace login y auth/token/lookup-self. El token no se muestra en la UI.",
+        "ruvic.3.label": "Añadir el nodo:",
+        "ruvic.3.body": "Elige recurso (KV, Lease, Database, SSH, AWS, Azure, GCP, System) y operación. Activa «Mask secret values» salvo que el siguiente paso necesite el secreto en claro.",
+        "ruvic.4.label": "Rotación KV:",
+        "ruvic.4.body": "KV no rota solo. La operación Rotate escribe una versión nueva (CAS opcional). Para secretos dinámicos usa Rotate Role / Rotate Root del motor.",
+        "ruvic.callout": "TLS permanece activo. «Ignore SSL issues» solo para laboratorios aislados.",
+        "section.verificacion": "Verificación",
+        "verify.1": "Test connection de la credencial en verde.",
+        "verify.2": "System → Health responde; Lookup Self no incluye el id del token.",
+        "verify.3": "KV Read de un path de prueba y List del prefijo.",
+        "verify.4": "Si hay motor dinámico: Generate credentials, anota lease_id, Lease → Revoke y confirma que ya no autentica.",
+        "section.solucion_problemas": "Solución de problemas",
+        "table.sintoma": "Síntoma",
+        "table.causa": "Causa probable",
+        "trouble.403": "403 / permission denied",
+        "trouble.403.body": "La política no cubre el path (en KV v2 el listado va por metadata/, no por data/).",
+        "trouble.404": "404 en KV",
+        "trouble.404.body": "Mount o versión KV incorrectos (v1 vs v2), o el path no existe.",
+        "trouble.approle": "Fallo de AppRole",
+        "trouble.approle.body": "Role ID/Secret ID inválidos, mount distinto de approle, o Secret ID de un solo uso ya consumido.",
+        "trouble.tls": "Error TLS",
+        "trouble.tls.body": "Certificado no confiable. Corrige la CA; no desactives TLS en producción.",
+        "trouble.lease": "Revoke no invalida",
+        "trouble.lease.body": "El secreto era KV (sin lease) o el rol no es renewable. Revoke solo aplica a credenciales dinámicas.",
+        "section.faq_seguridad": "Preguntas frecuentes y notas de seguridad",
+        "faq.1.q": "¿Ruvic almacena los secretos que lee de Vault?",
+        "faq.1.a": "No. El conector autentica, llama a la API y devuelve el JSON al paso del flujo. Activa el enmascarado para que passwords y tokens no queden visibles en la ejecución.",
+        "faq.2.q": "¿Por qué no hay revoke-force?",
+        "faq.2.a": "Es una operación sudo peligrosa. El conector solo ofrece lookup, renew y revoke sincrónico de un lease concreto.",
+        "faq.3.q": "¿Cómo se rotan secretos KV?",
+        "faq.3.a": "Escribiendo una versión nueva (operación Rotate/Write). Vault no rota KV por sí mismo. Los motores dinámicos sí tienen rotate-root y rotate-role.",
+        "faq.4.q": "¿Puedo usar un token root?",
+        "faq.4.a": "No se recomienda. Usa AppRole con Secret ID wrapping o periódico y una política de mínimo privilegio.",
+        "faq.warning": "Nunca pidas a un agente «devuélveme todas las credenciales». Limita paths y desactiva operaciones de escritura/rotación si el bot solo debe leer.",
+      },
+      en: {
+        doc_title: "HashiCorp Vault connector — Ruvic",
+        toc_title: "Contents",
+        "toc.que_es": "What it is and what it’s for",
+        "toc.prerrequisitos": "Prerequisites",
+        "toc.configuracion_fabricante": "Vendor / provider setup",
+        "toc.permisos": "Required permissions",
+        "toc.configuracion_ruvic": "Configuration in Ruvic",
+        "toc.verificacion": "Verification",
+        "toc.solucion_problemas": "Troubleshooting",
+        "toc.faq_seguridad": "FAQ and security notes",
+        guide_title: "HashiCorp Vault",
+        "section.que_es": "What it is and what it’s for",
+        "section.que_es.body": "This connector lets Ruvic workflows and agents manage infrastructure credential lifecycle in HashiCorp Vault without storing secrets in the workflow: KV read/write, dynamic credentials (AWS, Azure, GCP, database, and SSH), rotation, and lease revocation.",
+        "section.que_es.body2": "It does not create mounts or Vault policies. It uses engines and policies that already exist, with AppRole (recommended) or a token.",
+        "section.prerrequisitos": "Prerequisites",
+        "prereq.1": "A Vault cluster reachable from Ruvic over HTTPS with a valid TLS certificate.",
+        "prereq.2": "KV v1 or v2 mounted (default secret).",
+        "prereq.3": "Dynamic engines mounted only if you will use them: aws, azure, gcp, database, ssh.",
+        "prereq.4": "AppRole enabled, or a non-root token with a TTL and least-privilege policies.",
+        "prereq.5": "A Vault Enterprise namespace, if applicable.",
+        "section.configuracion_fabricante": "Vendor / provider setup",
+        "step.1.label": "Create a minimal policy:",
+        "step.1.body": "Grant capabilities only on the paths Ruvic should use. KV v2 + leases example:",
+        "step.2.label": "Enable AppRole:",
+        "step.2.body": "Mount approle, create a role bound to the policy, and generate a Role ID + Secret ID. Do not use the root token in Ruvic.",
+        "step.3.label": "Prepare dynamic engines:",
+        "step.3.body": "Configure AWS/Azure/GCP/database/SSH roles in Vault (not in Ruvic). The connector only calls creds, sts, sign, rotate-role, and rotate-root.",
+        "step.4.label": "Check connectivity:",
+        "step.4.body": "From a trusted environment, verify /v1/sys/health and an AppRole login before saving the credential in Ruvic.",
+        "img.vault_policy.alt": "Screenshot: Vault UI policy and AppRole (add when available)",
+        "section.permisos": "Required permissions",
+        "table.permiso": "Permission (Vault path)",
+        "table.para_que": "What it is for",
+        "perm.approle": "Machine authentication. The connector does not persist the client token.",
+        "perm.kv": "CRUD and listing of static infrastructure secrets (KV v2).",
+        "perm.db": "Issue and rotate database credentials.",
+        "perm.ssh": "OTP, certificate signing, and SSH key issuance.",
+        "perm.aws": "Short-lived IAM/STS credentials and AWS root rotation.",
+        "perm.azure": "Azure service principals and root rotation.",
+        "perm.gcp": "GCP tokens or keys and root rotation.",
+        "perm.lease": "Look up, renew, and revoke leases. revoke-prefix and revoke-force are not exposed.",
+        "section.configuracion_ruvic": "Configuration in Ruvic",
+        "ruvic.1.label": "Create a credential:",
+        "ruvic.1.body": "HashiCorp Vault API. Cluster URL, AppRole (Role ID + Secret ID) or token, optional namespace, KV/AWS/Azure/GCP/database/SSH mounts.",
+        "ruvic.2.label": "Test the connection:",
+        "ruvic.2.body": "Ruvic logs in and calls auth/token/lookup-self. The token is not shown in the UI.",
+        "ruvic.3.label": "Add the node:",
+        "ruvic.3.body": "Pick a resource (KV, Lease, Database, SSH, AWS, Azure, GCP, System) and operation. Keep Mask secret values on unless a later step needs the raw secret.",
+        "ruvic.4.label": "KV rotation:",
+        "ruvic.4.body": "KV does not rotate itself. Rotate writes a new version (optional CAS). For dynamic secrets use the engine’s Rotate Role / Rotate Root operations.",
+        "ruvic.callout": "TLS stays on. Ignore SSL issues is for isolated labs only.",
+        "section.verificacion": "Verification",
+        "verify.1": "Credential Test connection succeeds.",
+        "verify.2": "System → Health responds; Lookup Self does not include the token id.",
+        "verify.3": "KV Read on a test path and List on the prefix.",
+        "verify.4": "If a dynamic engine is enabled: Generate credentials, note lease_id, Lease → Revoke, and confirm the credential no longer authenticates.",
+        "section.solucion_problemas": "Troubleshooting",
+        "table.sintoma": "Symptom",
+        "table.causa": "Likely cause",
+        "trouble.403": "403 / permission denied",
+        "trouble.403.body": "The policy does not cover the path (KV v2 listing uses metadata/, not data/).",
+        "trouble.404": "404 on KV",
+        "trouble.404.body": "Wrong mount or KV version (v1 vs v2), or the path does not exist.",
+        "trouble.approle": "AppRole failure",
+        "trouble.approle.body": "Invalid Role ID/Secret ID, mount other than approle, or a single-use Secret ID that was already consumed.",
+        "trouble.tls": "TLS error",
+        "trouble.tls.body": "Untrusted certificate. Fix the CA; do not disable TLS in production.",
+        "trouble.lease": "Revoke does not invalidate",
+        "trouble.lease.body": "The secret was KV (no lease) or the role is not renewable. Revoke applies to dynamic credentials only.",
+        "section.faq_seguridad": "FAQ and security notes",
+        "faq.1.q": "Does Ruvic store secrets it reads from Vault?",
+        "faq.1.a": "No. The connector authenticates, calls the API, and returns JSON to the workflow step. Keep masking enabled so passwords and tokens are not visible in the execution.",
+        "faq.2.q": "Why is revoke-force missing?",
+        "faq.2.a": "It is a dangerous sudo operation. The connector only offers lookup, renew, and synchronous revoke of a single lease.",
+        "faq.3.q": "How are KV secrets rotated?",
+        "faq.3.a": "By writing a new version (Rotate/Write). Vault does not rotate KV on its own. Dynamic engines do have rotate-root and rotate-role.",
+        "faq.4.q": "Can I use a root token?",
+        "faq.4.a": "It is not recommended. Use AppRole with wrapping or a periodic Secret ID and a least-privilege policy.",
+        "faq.warning": "Never ask an agent to “return every credential”. Restrict paths and disable write/rotate operations if the bot should only read.",
+      },
+    };
+
+    function applyI18n(lang) {
+      const dict = I18N[lang] || I18N.es;
+      document.documentElement.lang = lang === 'en' ? 'en' : 'es';
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (key && dict[key]) el.textContent = dict[key];
+      });
+      document.querySelectorAll('[data-i18n-alt]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-alt');
+        if (key && dict[key]) el.setAttribute('alt', dict[key]);
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key && dict[key]) el.setAttribute('placeholder', dict[key]);
+      });
+      if (dict.doc_title) document.title = dict.doc_title;
+    }
+
+    applyI18n(localStorage.getItem('ruvic-docs-lang') || 'es');
+  </script>
+</body>
+</html>
