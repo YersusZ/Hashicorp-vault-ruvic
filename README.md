@@ -1,10 +1,42 @@
 # HashiCorp Vault — conector Ruvic
 
-Nodo n8n para que flujos y agentes de Ruvic gestionen el **ciclo de vida de credenciales de infraestructura** en [HashiCorp Vault](https://developer.hashicorp.com/vault): secretos KV, credenciales dinámicas (AWS, Azure, GCP, base de datos, SSH), rotación y leases.
+Librería Python para que el agente de OpenHands gestione el **ciclo de vida de credenciales** en [HashiCorp Vault](https://developer.hashicorp.com/vault): secretos KV, credenciales dinámicas (AWS, Azure, GCP, base de datos, SSH) y leases.
 
-El conector **no guarda secretos**. Autentica, llama a la HTTP API de Vault (`/v1/...`) y devuelve el JSON al workflow.
+El conector **no guarda secretos**. Lee `RUVIC_HASHICORP_VAULT_*` del entorno, llama a la API HTTP de Vault (`/v1/...`) y devuelve JSON.
 
 Guía de producto (ES/EN): [`docs/index.html`](docs/index.html).
+
+## OpenHands / Settings → Conectores
+
+```text
+lib/                          ruvic_hashicorp_vault_connector
+manifest.json                 formulario (id: hashicorp_vault)
+SKILL.md                      manual para el agente
+test_connection.py            botón Probar conexión
+docs/assets/icon.svg          icono del catálogo
+```
+
+Instalación de la librería (Python 3.10+):
+
+```bash
+pip install git+https://github.com/YersusZ/Hashicorp-vault-ruvic.git#subdirectory=lib
+```
+
+Prueba local, sin plataforma:
+
+```bash
+export RUVIC_HASHICORP_VAULT_VAULT_URL=http://127.0.0.1:8200
+export RUVIC_HASHICORP_VAULT_AUTH_MODE=token
+export RUVIC_HASHICORP_VAULT_TOKEN=...
+python test_connection.py
+python -m unittest tests/test_python_connector.py
+```
+
+En OpenHands la URL de este repo va en `ruvic_config/connector-requirements.txt`. El sync copia manifest, skill, test y docs; pip instala `lib/`.
+
+## Nodo n8n
+
+El directorio `nodes/` sigue siendo el nodo n8n (AppRole o token en la credencial **HashiCorp Vault API**). No lo usa Settings de OpenHands.
 
 ## Requisitos
 
@@ -82,10 +114,13 @@ El paquete `ruvic-docs-check` vive en el repo privado `Robin-AI-Solutions/ruvic-
 ## Estructura
 
 ```text
-credentials/     Credencial AppRole / Token
-nodes/           Nodo n8n y cliente HTTP Vault
-docs/            Guía bilingüe del portal Ruvic
-tests/           Unitarias + integración
+lib/                 Librería Python del conector OpenHands
+manifest.json        Formulario Settings (hashicorp_vault)
+SKILL.md             Ejemplos para el agente
+test_connection.py   Probar conexión
+credentials/         Credencial n8n AppRole / Token
+nodes/               Nodo n8n
+docs/                Guía bilingüe del portal Ruvic
+tests/               Unitarias Python + n8n
 docker-compose.vault.yml
-manifest.json    Catálogo Ruvic
 ```

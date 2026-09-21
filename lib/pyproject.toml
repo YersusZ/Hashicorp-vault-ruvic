@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ruvic-hashicorp-vault-connector"
+version = "1.0.0"
+description = "Conector Ruvic para el ciclo de vida de credenciales en HashiCorp Vault"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["ruvic_hashicorp_vault_connector*"]

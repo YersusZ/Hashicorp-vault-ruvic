@@ -3,6 +3,8 @@ node_modules
 coverage
 *.tsbuildinfo
 .DS_Store
+__pycache__/
+*.py[cod]
 .venv
 .env
 .env.local

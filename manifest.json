@@ -1,28 +1,238 @@
 {
-  "id": "hashicorp-vault",
+  "id": "hashicorp_vault",
   "name": "HashiCorp Vault",
-  "name_en": "HashiCorp Vault",
-  "description": "Gestión del ciclo de vida de credenciales de infraestructura en HashiCorp Vault: secretos KV, credenciales dinámicas (AWS, Azure, GCP, base de datos, SSH), rotación y leases.",
-  "description_en": "Infrastructure credential lifecycle in HashiCorp Vault: KV secrets, dynamic credentials (AWS, Azure, GCP, database, SSH), rotation, and leases.",
-  "category": "seguridad",
-  "category_en": "security",
-  "keywords": [
-    "vault",
-    "hashicorp",
-    "secrets",
-    "credenciales",
-    "credentials",
-    "kv",
-    "approle",
-    "aws",
-    "azure",
-    "gcp",
-    "ssh",
-    "database",
-    "leases",
-    "rotacion",
-    "rotation",
-    "infraestructura",
-    "infrastructure"
+  "version": "1.0.0",
+  "icon": "icon.svg",
+  "description": "Ciclo de vida de credenciales en HashiCorp Vault: secretos KV, leases y credenciales dinámicas (AWS, Azure, GCP, base de datos, SSH).",
+  "category": "security",
+  "library": {
+    "package": "ruvic-hashicorp-vault-connector",
+    "install": "pip install git+https://github.com/YersusZ/Hashicorp-vault-ruvic.git#subdirectory=lib",
+    "import_name": "ruvic_hashicorp_vault_connector"
+  },
+  "env_prefix": "RUVIC_HASHICORP_VAULT_",
+  "operations": [
+    "kv.read",
+    "kv.write",
+    "kv.list",
+    "kv.delete",
+    "lease.lookup",
+    "lease.renew",
+    "lease.revoke",
+    "engine.generate",
+    "sys.health"
+  ],
+  "test_connection": true,
+  "docs": {
+    "skill": "SKILL.md",
+    "permissions_note": "El token o AppRole necesita solo las políticas de los mounts que va a usar (KV, database, ssh, aws, azure, gcp). No uses el token root."
+  },
+  "auth_modes": [
+    {
+      "id": "approle",
+      "label": "AppRole",
+      "fields": [
+        {
+          "key": "vault_url",
+          "label": "URL de Vault",
+          "type": "text",
+          "required": true,
+          "placeholder": "https://vault.ejemplo.com:8200",
+          "help_text": "URL del cluster, con protocolo y puerto"
+        },
+        {
+          "key": "role_id",
+          "label": "Role ID",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "secret_id",
+          "label": "Secret ID",
+          "type": "password",
+          "secret": true,
+          "required": true
+        },
+        {
+          "key": "approle_mount",
+          "label": "Mount de AppRole",
+          "type": "text",
+          "required": false,
+          "default": "approle"
+        },
+        {
+          "key": "namespace",
+          "label": "Namespace",
+          "type": "text",
+          "required": false,
+          "help_text": "Solo Vault Enterprise. Vacío en OSS"
+        },
+        {
+          "key": "ignore_ssl",
+          "label": "Ignorar errores TLS",
+          "type": "boolean",
+          "required": false,
+          "default": "false",
+          "help_text": "Solo en laboratorios aislados"
+        },
+        {
+          "key": "connect_timeout",
+          "label": "Timeout de conexión (segundos)",
+          "type": "number",
+          "required": false,
+          "default": "10"
+        },
+        {
+          "key": "kv_mount",
+          "label": "Mount KV",
+          "type": "text",
+          "required": false,
+          "default": "secret"
+        },
+        {
+          "key": "kv_version",
+          "label": "Versión KV",
+          "type": "select",
+          "required": false,
+          "default": "v2",
+          "options": [
+            {"value": "v2", "label": "KV v2"},
+            {"value": "v1", "label": "KV v1"}
+          ]
+        },
+        {
+          "key": "aws_mount",
+          "label": "Mount AWS",
+          "type": "text",
+          "required": false,
+          "default": "aws"
+        },
+        {
+          "key": "azure_mount",
+          "label": "Mount Azure",
+          "type": "text",
+          "required": false,
+          "default": "azure"
+        },
+        {
+          "key": "gcp_mount",
+          "label": "Mount GCP",
+          "type": "text",
+          "required": false,
+          "default": "gcp"
+        },
+        {
+          "key": "database_mount",
+          "label": "Mount Database",
+          "type": "text",
+          "required": false,
+          "default": "database"
+        },
+        {
+          "key": "ssh_mount",
+          "label": "Mount SSH",
+          "type": "text",
+          "required": false,
+          "default": "ssh"
+        }
+      ]
+    },
+    {
+      "id": "token",
+      "label": "Token",
+      "fields": [
+        {
+          "key": "vault_url",
+          "label": "URL de Vault",
+          "type": "text",
+          "required": true,
+          "placeholder": "https://vault.ejemplo.com:8200",
+          "help_text": "URL del cluster, con protocolo y puerto"
+        },
+        {
+          "key": "token",
+          "label": "Token",
+          "type": "password",
+          "secret": true,
+          "required": true,
+          "help_text": "Prefiere un token periódico, no el token root"
+        },
+        {
+          "key": "namespace",
+          "label": "Namespace",
+          "type": "text",
+          "required": false,
+          "help_text": "Solo Vault Enterprise. Vacío en OSS"
+        },
+        {
+          "key": "ignore_ssl",
+          "label": "Ignorar errores TLS",
+          "type": "boolean",
+          "required": false,
+          "default": "false",
+          "help_text": "Solo en laboratorios aislados"
+        },
+        {
+          "key": "connect_timeout",
+          "label": "Timeout de conexión (segundos)",
+          "type": "number",
+          "required": false,
+          "default": "10"
+        },
+        {
+          "key": "kv_mount",
+          "label": "Mount KV",
+          "type": "text",
+          "required": false,
+          "default": "secret"
+        },
+        {
+          "key": "kv_version",
+          "label": "Versión KV",
+          "type": "select",
+          "required": false,
+          "default": "v2",
+          "options": [
+            {"value": "v2", "label": "KV v2"},
+            {"value": "v1", "label": "KV v1"}
+          ]
+        },
+        {
+          "key": "aws_mount",
+          "label": "Mount AWS",
+          "type": "text",
+          "required": false,
+          "default": "aws"
+        },
+        {
+          "key": "azure_mount",
+          "label": "Mount Azure",
+          "type": "text",
+          "required": false,
+          "default": "azure"
+        },
+        {
+          "key": "gcp_mount",
+          "label": "Mount GCP",
+          "type": "text",
+          "required": false,
+          "default": "gcp"
+        },
+        {
+          "key": "database_mount",
+          "label": "Mount Database",
+          "type": "text",
+          "required": false,
+          "default": "database"
+        },
+        {
+          "key": "ssh_mount",
+          "label": "Mount SSH",
+          "type": "text",
+          "required": false,
+          "default": "ssh"
+        }
+      ]
+    }
   ]
 }
